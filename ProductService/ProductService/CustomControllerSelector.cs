@@ -14,38 +14,38 @@ namespace ProductService
 {
     public class CustomControllerSelector : IHttpControllerSelector
     {
-        private HttpConfiguration _config;
-        private IEnumerable<EntitySetConfiguration> _entitySets;
-
-        public IHttpControllerSelector PreviousSelector { get; set; }
+        private IDictionary<string, HttpControllerDescriptor> _controllerMappings;
 
         public CustomControllerSelector(HttpConfiguration configuration, IEnumerable<EntitySetConfiguration> entitySets)
         {
-            _config = configuration;
-            _entitySets = entitySets;
+            _controllerMappings = GenerateMappings(configuration, entitySets);
         }
 
-        public HttpControllerDescriptor SelectController(HttpRequestMessage request)
+        private IDictionary<string, HttpControllerDescriptor> GenerateMappings(HttpConfiguration config, IEnumerable<EntitySetConfiguration> entitySets)
         {
-            var controllers = GetControllerMapping();
-            var path = request.RequestUri.LocalPath.Split('/','(');
-            if (path.Length < 2)
+            IDictionary<string, HttpControllerDescriptor> dictionary = new Dictionary<string, HttpControllerDescriptor>();
+
+            // Map root controller
+            dictionary.Add("", new HttpControllerDescriptor(config, "Index", typeof(IndexController)));
+
+            foreach (EntitySetConfiguration set in entitySets)
             {
-                // TODO: Should return home controller
-            }
-
-            return controllers[path[1]];
-        }
-
-        public IDictionary<string, HttpControllerDescriptor> GetControllerMapping()
-        {
-            var dictionary = new Dictionary<string, HttpControllerDescriptor>();
-            foreach (EntitySetConfiguration set in _entitySets) {
-                var genericControllerDescription = new HttpControllerDescriptor(_config, set.Name, typeof(GenericController<>).MakeGenericType(set.ClrType));
+                var genericControllerDescription = new HttpControllerDescriptor(config, set.Name, typeof(GenericController<>).MakeGenericType(set.ClrType));
                 dictionary.Add(set.Name, genericControllerDescription);
             }
 
             return dictionary;
+        }
+
+        public HttpControllerDescriptor SelectController(HttpRequestMessage request)
+        {
+            var path = request.RequestUri.LocalPath.Split('/','(');
+            return _controllerMappings[path[1]];
+        }
+
+        public IDictionary<string, HttpControllerDescriptor> GetControllerMapping()
+        {
+            return _controllerMappings;
         }
     }
 }
