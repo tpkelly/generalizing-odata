@@ -6,6 +6,7 @@ using System.Net;
 using System.Threading.Tasks;
 using System.Web.Http;
 using System.Web.OData;
+using System.Web.OData.Routing;
 
 namespace ProductService.Controllers
 {
@@ -31,36 +32,36 @@ namespace ProductService.Controllers
 
         #region CRUD
 
-        // E.g. GET http://localhost:55934/Products
+        // E.g. GET http://localhost/Products
         [EnableQuery] // EnableQuery allows filter, sort, page, top, etc.
         public IQueryable<T> Get()
         {
             return TableForT();
         }
 
-        // E.g. GET http://localhost:55934/Products(1)
+        // E.g. GET http://localhost/Products(1)
         [EnableQuery]
         public SingleResult<T> Get([FromODataUri] long key)
         {
-            IQueryable<T> result = TableForT().Where(p => p.Id == key);
+            IQueryable<T> result = Get().Where(p => p.Id == key);
             return SingleResult.Create(result);
         }
 
-        // E.g. POST http://localhost:55934/Products
-        public async Task<IHttpActionResult> Post(T product)
+        // E.g. POST http://localhost/Products
+        public async Task<IHttpActionResult> Post(T obj)
         {
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
             }
 
-            TableForT().Add(product);
+            TableForT().Add(obj);
             await db.SaveChangesAsync();
-            return Created(product);
+            return Created(obj);
         }
 
-        // E.g. PATCH http://localhost:55934/Products(1)
-        public async Task<IHttpActionResult> Patch([FromODataUri] long key, Delta<T> product)
+        // E.g. PATCH http://localhost/Products(1)
+        public async Task<IHttpActionResult> Patch([FromODataUri] long key, Delta<T> delta)
         {
             if (!ModelState.IsValid)
             {
@@ -73,7 +74,7 @@ namespace ProductService.Controllers
                 return NotFound();
             }
 
-            product.Patch(entity);
+            delta.Patch(entity);
 
             try
             {
@@ -94,20 +95,20 @@ namespace ProductService.Controllers
             return Updated(entity);
         }
 
-        // E.g. PUT http://localhost:55934/Products(1)
-        public async Task<IHttpActionResult> Put([FromODataUri] long key, T update)
+        // E.g. PUT http://localhost/Products(1)
+        public async Task<IHttpActionResult> Put([FromODataUri] long key, T obj)
         {
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
             }
 
-            if (key != update.Id)
+            if (key != obj.Id)
             {
                 return BadRequest();
             }
 
-            db.Entry(update).State = EntityState.Modified;
+            db.Entry(obj).State = EntityState.Modified;
 
             try
             {
@@ -125,19 +126,19 @@ namespace ProductService.Controllers
                 }
             }
 
-            return Updated(update);
+            return Updated(obj);
         }
 
-        // E.g. DELETE http://localhost:55934/Products(1)
+        // E.g. DELETE http://localhost/Products(1)
         public async Task<IHttpActionResult> Delete([FromODataUri] long key)
         {
-            var product = await TableForT().FindAsync(key);
-            if (product == null)
+            var entity = await TableForT().FindAsync(key);
+            if (entity == null)
             {
                 return NotFound();
             }
 
-            TableForT().Remove(product);
+            TableForT().Remove(entity);
             await db.SaveChangesAsync();
             return StatusCode(HttpStatusCode.NoContent);
         }
